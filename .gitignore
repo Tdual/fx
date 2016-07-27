@@ -3,3 +3,4 @@
 rateData
 __pycache__
 *.pyc
+oanda/account_info.yaml
