@@ -7,7 +7,7 @@ class BaseRequest:
         with open("account_info.yaml") as f:
             data = yaml.load(f)
         self.access_token = data["access_token"]
-        self.account_id = str(data["account_id"]) 
+        self.account_id = str(data["account_id"])
         self.instruments = "USD_JPY"
 
         self.account_api = "/v1/accounts/"
@@ -33,7 +33,7 @@ class OrderRequest(BaseRequest):
         r = requests.get(self.url,headers=self.headers)
         return r.json()
 
-    def add_orders(self, unit=0, side="sell"):
+    def add_orders(self, side, unit=0,):
     #side is sell or buy
         order_type = "market"
         payload = {
@@ -59,4 +59,25 @@ class TradeRequest(BaseRequest):
             "count": limit
         }
         r = requests.get(self.url, params=params, headers=self.headers)
+        return r.json()
+
+    def get_detail(self, trade_id):
+        detail_url = self.url + "/" + str(trade_id)
+        r = requests.get(detail_url, headers=self.headers)
+        return r.json()
+
+    def modify_detail(self, trade_id, params):
+        u"""
+
+        params.stopLoss
+        params.takeProfit
+        params.trailingStop
+        """
+        detail_url = self.url + "/" + str(trade_id)
+        r = requests.patch(detail_url, headers=self.headers, data=params)
+        return r.json()
+
+    def close_detail(self, trade_id):
+        detail_url = self.url + "/" + str(trade_id)
+        r = requests.delete(detail_url, headers=self.headers)
         return r.json()
