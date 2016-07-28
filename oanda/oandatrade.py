@@ -1,16 +1,18 @@
 import requests
 import yaml
+import os
 
 
 class BaseRequest:
     def __init__(self):
-        with open("account_info.yaml") as f:
+        with open(os.path.dirname(__file__)+"/account_info.yaml") as f:
             data = yaml.load(f)
         self.access_token = data["access_token"]
         self.account_id = str(data["account_id"])
         self.instruments = "USD_JPY"
 
         self.account_api = "/v1/accounts/"
+        self.candle_api = "/v1/candles"
 
         #stream_domain = 'stream-fxpractice.oanda.com'
         api_domain = 'api-fxpractice.oanda.com'
@@ -52,7 +54,7 @@ class TradeRequest(BaseRequest):
         self.url = self.base_url + self.account_api +"/"+ self.account_id+"/"+"trades"
 
     def get_list(self, instrument=None, limit=50):
-        if instrument:
+        if not instrument:
             instrument = self.instruments
         params = {
             "instrument": instrument,
@@ -80,4 +82,23 @@ class TradeRequest(BaseRequest):
     def close_detail(self, trade_id):
         detail_url = self.url + "/" + str(trade_id)
         r = requests.delete(detail_url, headers=self.headers)
+        return r.json()
+
+class CandleRequest(BaseRequest):
+    def __init__(self):
+        super().__init__()
+        self.url = self.base_url + self.candle_api
+
+    def get_list(self, start_date, end_date, instrument=None, interval="H1"):
+        if not instrument:
+            instrument = self.instruments
+        params = {
+            "instrument": instrument,
+            "granularity": interval,
+            "start": start_date,
+            "end": end_date
+        }
+        print(params)
+        r = requests.get(self.url, params=params, headers=self.headers)
+        print(r)
         return r.json()
