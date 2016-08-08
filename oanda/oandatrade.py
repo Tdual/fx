@@ -1,6 +1,8 @@
 import requests
 import yaml
+import json
 import os
+import pandas as pd
 
 
 class BaseRequest:
@@ -101,4 +103,10 @@ class CandleRequest(BaseRequest):
         print(params)
         r = requests.get(self.url, params=params, headers=self.headers)
         print(r)
-        return r.json()
+        candle_list = r.json()["candles"]
+        list_obj ={}
+        for candle in candle_list:
+            candle_time = candle.pop("time")
+            list_obj[candle_time] = candle
+        res = pd.read_json(json.dumps(list_obj), convert_dates=['time'],orient="index")
+        return res

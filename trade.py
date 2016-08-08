@@ -1,4 +1,3 @@
-import oanda.oandatrade as ot
 import numpy
 import pandas as pd
 import json
@@ -6,24 +5,19 @@ import datetime
 import time
 
 from util import dfutil
+import oanda.oandatrade as ot
 
-cr = ot.CandleRequest()
 
-def get_trade_data():
-    NY_time = datetime.datetime.now() - datetime.timedelta(hours=5)
-    d = NY_time - datetime.timedelta(days=1)
-    start_date = d.isoformat("T")[:-4] + "Z"
-    r = cr.get_list(start_date, end_date=None, interval="M15")
-    candle_list = r["candles"]
-    df = pd.read_json(json.dumps(candle_list), convert_dates=['time'])
-    bb = dfutil.get_bb(df["closeBid"], 50,)
-    res = pd.concat([bb, df["time"]], axis=1)
-    return res
+def get_trade_data(back_days=10, candle_interval="M15", bb_period=50):
+    NY_time = datetime.datetime.utcnow() - datetime.timedelta(hours=5)
+    back_days = datetime.timedelta(days=back_days)
+    start_date = (NY_time - back_days).isoformat("T") + "Z"
+    cr = ot.CandleRequest()
+    res = cr.get_list(start_date, end_date=None, interval=candle_interval)
+    bb = dfutil.get_bb(res["closeBid"], bb_period,)
+    return bb
 
 def judge(data, outer_trade):
-    print("### in judge function###")
-    print(outer_trade)
-    print("#########")
 
     latest_condition = get_out_condition(data[-1])
     pre_latest_conditon = get_out_condition(data[-2])
@@ -85,11 +79,12 @@ def get_in_condition(list_data, outer_trade):
 
 
 
-def main():
+def main(request_interval):
     outer_trade = {}
     while True:
         r = get_trade_data()
         data = json.loads(r.dropna().tail().to_json(orient="records"))
+        print(data)
         #### test code
         #with open("order_test.json", "r") as f:
         #    data = json.loads(f.read())
@@ -97,7 +92,7 @@ def main():
         outer_trade = judge(data, outer_trade)
         print("---outer_trade---")
         print(outer_trade)
-        time.sleep(10)
+        time.sleep(request_interval)
 
 if __name__ == "__main__":
-    main()
+    main(10*60)
