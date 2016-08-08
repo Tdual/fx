@@ -25,7 +25,6 @@ def judge(data, outer_trade):
     if not "tradeOpened" in outer_trade:
         if latest_condition["upper"] and pre_latest_conditon["upper"]:
             print("------buy------")
-            jp_time = datetime.datetime.utcfromtimestamp(data[-1]["time"]/1000+9*60*60)
             oreq = ot.OrderRequest()
             res = oreq.add_orders(side="buy", unit=100000)
             if not res:
@@ -33,7 +32,6 @@ def judge(data, outer_trade):
             return res
         elif latest_condition["lower"] and pre_latest_conditon["lower"]:
             print("------sell------")
-            jp_time = datetime.datetime.utcfromtimestamp(data[-1]["time"]/1000+9*60*60)
             oreq = ot.OrderRequest()
             res = oreq.add_orders(side="sell", unit=100000)
             if not res:
