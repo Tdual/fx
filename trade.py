@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import numpy
 import pandas as pd
 import json
@@ -8,7 +9,7 @@ from util import dfutil
 import oanda.oandatrade as ot
 
 
-def get_trade_data(back_days=10, candle_interval="M15", bb_period=50):
+def get_trade_data(back_days=20, candle_interval="H1", bb_period=50):
     NY_time = datetime.datetime.utcnow() - datetime.timedelta(hours=5)
     back_days = datetime.timedelta(days=back_days)
     start_date = (NY_time - back_days).isoformat("T") + "Z"
@@ -17,20 +18,17 @@ def get_trade_data(back_days=10, candle_interval="M15", bb_period=50):
     bb = dfutil.get_bb(res["closeBid"], bb_period,)
     return bb
 
-def judge(data, outer_trade):
-
-    latest_condition = get_out_condition(data[-1])
-    pre_latest_conditon = get_out_condition(data[-2])
+def judge(candle_list, outer_trade):
 
     if not "tradeOpened" in outer_trade:
-        if latest_condition["upper"] and pre_latest_conditon["upper"]:
+        if get_out_condition(candle_list)["upper"]:
             print("------buy------")
             oreq = ot.OrderRequest()
             res = oreq.add_orders(side="buy", unit=100000)
             if not res:
                 res = {}
             return res
-        elif latest_condition["lower"] and pre_latest_conditon["lower"]:
+        elif get_out_condition(candle_list)["lower"]:
             print("------sell------")
             oreq = ot.OrderRequest()
             res = oreq.add_orders(side="sell", unit=100000)
@@ -40,7 +38,7 @@ def judge(data, outer_trade):
         else:
             return {}
     else:
-        if get_in_condition(data, outer_trade):
+        if is_limit_opposite_bb(candle_list, outer_trade):
             print("-------trade----------")
             treq = ot.TradeRequest()
             res = treq.close_detail(outer_trade["tradeOpened"]["id"])
@@ -51,11 +49,30 @@ def judge(data, outer_trade):
             return outer_trade
 
 
-def get_out_condition(data):
-    upper = data["+2sigma"] < data["closeBid"]
-    lower = data["-2sigma"] > data["closeBid"]
-    res = {"upper":upper,"lower":lower}
+def get_out_condition(candle_list):
+    upper = candle_list[-1]["+2sigma"] < candle_list[-1]["closeBid"] \
+        and candle_list[-2]["+2sigma"] < candle_list[-2]["closeBid"]
+
+    lower = candle_list[-1]["-2sigma"] > candle_list[-1]["closeBid"] \
+        and candle_list[-2]["-2sigma"] > candle_list[-2]["closeBid"]
+    res = {
+        "upper": upper,
+        "lower": lower
+        }
     return res
+
+def is_limit_opposite_bb(list_data, outer_trade):
+    if not "tradeOpened" in outer_trade:
+        return False
+    side = outer_trade["tradeOpened"]["side"]
+    if side == "buy":
+        opposite_bb = "-2sigma"
+        res = list_data[-1][opposite_bb] - list_data[-2][opposite_bb] > 0
+    else:
+        opposite_bb = "+2sigma"
+        res = list_data[-1][opposite_bb] - list_data[-2][opposite_bb] < 0
+    return res
+
 
 def get_in_condition(list_data, outer_trade):
     if not "tradeOpened" in outer_trade:
@@ -93,4 +110,4 @@ def main(request_interval):
         time.sleep(request_interval)
 
 if __name__ == "__main__":
-    main(10*60)
+    main(30*60)
