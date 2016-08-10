@@ -19,7 +19,8 @@ def get_ohlc(df, interval):
 
 def display_chart(df, width=20, height=10):
     p = df.plot(
-        figsize=(width,height)
+        figsize=(width,height),
+        grid = True
     )
     return p
 
