@@ -10,6 +10,17 @@ import oanda.oandatrade as ot
 
 
 def get_trade_data(back_days=20, candle_interval="H1", bb_period=50):
+    """
+    getting data for judging trade
+
+    :param int back_days: days included in calculating Bollinger bind
+    :param str candle_interval: oanda api format time
+    :param int bb_period: Bolinger band's period
+
+    :return: bolinger bind param(+2sigma,sma,-2sigma,closeBid)
+    :rtype: DataFrame
+    """
+
     NY_time = datetime.datetime.utcnow() - datetime.timedelta(hours=5)
     back_days = datetime.timedelta(days=back_days)
     start_date = (NY_time - back_days).isoformat("T") + "Z"
@@ -18,20 +29,34 @@ def get_trade_data(back_days=20, candle_interval="H1", bb_period=50):
     bb = dfutil.get_bb(res["closeBid"], bb_period,)
     return bb
 
-def judge(candle_list, outer_trade):
+def judge(candle_list, outer_trade, connect_oanda=True):
+    """
+    judging trade (buy or sell or close)
+
+    :param list candle_list: list of candles
+    :param dict outer_trade: reponse of ordering ticket
+    :return: new outer trade or empty dict
+    :rtype: dict
+    """
 
     if not "tradeOpened" in outer_trade:
         if get_out_condition(candle_list)["upper"]:
             print("------buy------")
-            oreq = ot.OrderRequest()
-            res = oreq.add_orders(side="buy", unit=100000)
+            if connect_oanda:
+                oreq = ot.OrderRequest()
+                res = oreq.add_orders(side="buy", unit=100000)
+            else:
+                res = _create_dummy_open_res(candle_list, "buy")
             if not res:
                 res = {}
             return res
         elif get_out_condition(candle_list)["lower"]:
             print("------sell------")
-            oreq = ot.OrderRequest()
-            res = oreq.add_orders(side="sell", unit=100000)
+            if connect_oanda:
+                oreq = ot.OrderRequest()
+                res = oreq.add_orders(side="sell", unit=100000)
+            else:
+                res = _create_dummy_open_res(candle_list, "sell")
             if not res:
                 res = {}
             return res
@@ -40,10 +65,12 @@ def judge(candle_list, outer_trade):
     else:
         if is_limit_opposite_bb(candle_list, outer_trade):
             print("-------trade----------")
-            treq = ot.TradeRequest()
-            res = treq.close_detail(outer_trade["tradeOpened"]["id"])
+            if connect_oanda:
+                treq = ot.TradeRequest()
+                res = treq.close_detail(outer_trade["tradeOpened"]["id"])
+            else:
+                res = _create_dummy_close_res(candle_list, outer_trade)
             print(res)
-            print("-----------------")
             return {}
         else:
             return outer_trade
@@ -92,21 +119,63 @@ def get_in_condition(list_data, outer_trade):
     print("lower in bound: " + str(lower_in_bound))
     return upper_in_bound or lower_in_bound
 
+def _create_dummy_open_res(candle_list, side):
+    candle = candle_list[-1]
+    dummy = {
+      "instrument" : "USD_JPY",
+      "time" : candle["time"],
+      "price" : candle["closeBid"],
+      "tradeOpened" : {
+        "id" : 175517237,
+        "units" : 10000,
+        "side" : side,
+        "takeProfit" : 0,
+        "stopLoss" : 0,
+        "trailingStop" : 0
+      },
+      "tradesClosed" : [],
+      "tradeReduced" : {}
+    }
+    return dummy
 
+def _create_dummy_close_res(candle_list, outer_trade):
+    candle = candle_list[-1]
+    NY_time = datetime.datetime.utcnow() - datetime.timedelta(hours=5)
+    now = NY_time.isoformat("T") + "Z"
+    profit = outer_trade["tradeOpened"]["units"] * (candle["closeBid"] - outer_trade["price"])
+    dummy = {
+      "id" : outer_trade["tradeOpened"]["id"],
+      "price" : candle["closeBid"],
+      "instrument" : outer_trade["instrument"],
+      "profit" :  profit,
+      "side" :  outer_trade["tradeOpened"],
+      "time" : now
+    }
+    return dummy
+
+
+def pd_to_dict(bb_df):
+    data_list = []
+    for i in range(0, len(bb_df)):
+        new_data = {
+            "+2sigma": bb_df.ix[i]["+2sigma"],
+            "-2sigma": bb_df.ix[i]["-2sigma"],
+            "SMA": bb_df.ix[i]["SMA"],
+            "closeBid": bb_df.ix[i]["closeBid"],
+            "time": str(bb_df.ix[i].name)
+        }
+        data_list.append(new_data)
+    return data_list
 
 def main(request_interval):
-    outer_trade = {}
+    outer_trade = {"tradeOpened":{"side":"sell"}}
     while True:
         r = get_trade_data()
-        data = json.loads(r.dropna().tail().to_json(orient="records"))
-        print(data)
-        #### test code
-        #with open("order_test.json", "r") as f:
-        #    data = json.loads(f.read())
-        ####
-        outer_trade = judge(data, outer_trade)
-        print("---outer_trade---")
-        print(outer_trade)
+        latest = r.dropna().tail()
+        data_list = pd_to_dict(latest)
+        #outer_trade = judge(data_list, outer_trade)
+        outer_trade = is_limit_opposite_bb(data_list, outer_trade)
+        print("---outer_trade---:{}".format(outer_trade))
         time.sleep(request_interval)
 
 if __name__ == "__main__":

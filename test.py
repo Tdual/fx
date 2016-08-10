@@ -42,7 +42,7 @@ class TestTrade(unittest.TestCase):
             "price" : 1.37041,
             "tradeOpened" : {
                 "id" : 175517237,
-                "units" : 2,
+                "units" : 100000,
                 "side" : "buy",
                 "takeProfit" : 0,
                 "stopLoss" : 0,
@@ -57,7 +57,7 @@ class TestTrade(unittest.TestCase):
             "price" : 1.37041,
             "tradeOpened" : {
                 "id" : 175517237,
-                "units" : 2,
+                "units" : 100000,
                 "side" : "sell",
                 "takeProfit" : 0,
                 "stopLoss" : 0,
@@ -86,6 +86,15 @@ class TestTrade(unittest.TestCase):
         self.assertFalse(res_1_2)
         self.assertFalse(res_2_1)
         self.assertTrue(res_2_2)
+
+    def test_judge(self):
+        res_1 = trade.judge(self.candle_list_1, {}, False)
+        res_2 = trade.judge(self.candle_list_2, {}, False)
+        self.assertEqual(res_1["tradeOpened"]["side"], "buy")
+        self.assertEqual(res_2["tradeOpened"]["side"], "sell")
+
+        res_close_1 = trade.judge(self.candle_list_1, self.outer_trade_1, False)
+        self.assertEqual(len(res_close_1),0)
 
 
 
