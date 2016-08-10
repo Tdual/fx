@@ -101,6 +101,8 @@ class CandleRequest(BaseRequest):
             "end": end_date
         }
         print(params)
+        if not end_date:
+            params["count"] = 5000
         r = requests.get(self.url, params=params, headers=self.headers)
         print(r)
         candle_list = r.json()["candles"]
