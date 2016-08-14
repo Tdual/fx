@@ -168,13 +168,12 @@ def pd_to_dict(bb_df):
     return data_list
 
 def main(request_interval):
-    outer_trade = {"tradeOpened":{"side":"sell"}}
+    outer_trade = {}
     while True:
         r = get_trade_data()
         latest = r.dropna().tail()
         data_list = pd_to_dict(latest)
-        #outer_trade = judge(data_list, outer_trade)
-        outer_trade = is_limit_opposite_bb(data_list, outer_trade)
+        outer_trade = judge(data_list, outer_trade)
         print("---outer_trade---:{}".format(outer_trade))
         time.sleep(request_interval)
 
