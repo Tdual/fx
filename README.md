@@ -24,13 +24,16 @@ pip install jupyter
 sudo pip install --upgrade https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.10.0rc0-cp34-cp34m-linux_x86_64.whl
 ```
 
+##### install some modules 
+```
+sudo pip install pandas
+sudo pip install request 
+sudo pip install pyyaml
+```
+
 ##### install matplotlib
 ```
 apt-get install libfreetype6-dev libxft-dev
 pip install matplotlib
 ```
 
-#### yaml module
-```
-pip install pyyaml
-```
