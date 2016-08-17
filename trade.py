@@ -7,6 +7,7 @@ import time
 
 from util import dfutil
 import oanda.oandatrade as ot
+import log
 
 
 def get_trade_data(back_days=20, candle_interval="H1", bb_period=50):
@@ -41,7 +42,7 @@ def judge(candle_list, outer_trade, connect_oanda=True):
 
     if not "tradeOpened" in outer_trade:
         if get_out_condition(candle_list)["upper"]:
-            print("------buy------")
+            log.debug("------buy------")
             if connect_oanda:
                 oreq = ot.OrderRequest()
                 res = oreq.add_orders(side="buy", unit=100000)
@@ -51,7 +52,7 @@ def judge(candle_list, outer_trade, connect_oanda=True):
                 res = {}
             return res
         elif get_out_condition(candle_list)["lower"]:
-            print("------sell------")
+            log.debug("------sell------")
             if connect_oanda:
                 oreq = ot.OrderRequest()
                 res = oreq.add_orders(side="sell", unit=100000)
@@ -64,13 +65,13 @@ def judge(candle_list, outer_trade, connect_oanda=True):
             return {}
     else:
         if is_limit_opposite_bb(candle_list, outer_trade):
-            print("-------trade----------")
+            log.debug("-------trade----------")
             if connect_oanda:
                 treq = ot.TradeRequest()
                 res = treq.close_detail(outer_trade["tradeOpened"]["id"])
             else:
                 res = _create_dummy_close_res(candle_list, outer_trade)
-            print(res)
+            log.debug(res)
             return {}
         else:
             return outer_trade
@@ -100,24 +101,6 @@ def is_limit_opposite_bb(list_data, outer_trade):
         res = list_data[-1][opposite_bb] - list_data[-2][opposite_bb] < 0
     return res
 
-
-def get_in_condition(list_data, outer_trade):
-    if not "tradeOpened" in outer_trade:
-        return False
-    upper = outer_trade["tradeOpened"]["side"] == "buy"
-    lower = outer_trade["tradeOpened"]["side"] == "sell"
-    upper_in_bound = upper and \
-        list_data[-1]["closeBid"] < list_data[-2]["closeBid"] and \
-        list_data[-2]["closeBid"] < list_data[-3]["closeBid"]
-    lower_in_bound = lower and \
-        list_data[-1]["closeBid"] > list_data[-2]["closeBid"] and \
-        list_data[-2]["closeBid"] > list_data[-3]["closeBid"]
-
-    print("upper: " + str(upper))
-    print("lower: " + str(lower))
-    print("upper in bound: " + str(upper_in_bound))
-    print("lower in bound: " + str(lower_in_bound))
-    return upper_in_bound or lower_in_bound
 
 def _create_dummy_open_res(candle_list, side):
     candle = candle_list[-1]
@@ -174,7 +157,8 @@ def main(request_interval):
         latest = r.dropna().tail()
         data_list = pd_to_dict(latest)
         outer_trade = judge(data_list, outer_trade)
-        print("---outer_trade---:{}".format(outer_trade))
+        log.debug("---outer_trade---:{}".format(outer_trade))
+
         time.sleep(request_interval)
 
 if __name__ == "__main__":
