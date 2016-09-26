@@ -104,11 +104,14 @@ class CandleRequest(BaseRequest):
         if not end_date:
             params["count"] = 5000
         r = requests.get(self.url, params=params, headers=self.headers)
-        print(r)
-        candle_list = r.json()["candles"]
-        list_obj ={}
-        for candle in candle_list:
-            candle_time = candle.pop("time")
-            list_obj[candle_time] = candle
-        res = pd.read_json(json.dumps(list_obj), convert_dates=['time'],orient="index")
-        return res
+        if "message" in r.json():
+            print(r.json())
+            return None
+        else:
+            candle_list = r.json()["candles"]
+            list_obj ={}
+            for candle in candle_list:
+                candle_time = candle.pop("time")
+                list_obj[candle_time] = candle
+            res = pd.read_json(json.dumps(list_obj), convert_dates=['time'],orient="index")
+            return res
